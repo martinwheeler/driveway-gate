@@ -6,11 +6,14 @@
 
 const int IS_ESP32 = 0;
 const int IS_DEBUG = 0;
+const int IS_LIGHT_ENABLE = 0;
 
-const int LEFT_MOTOR = IS_ESP32 ? 18 : 2;           //  Low = off    High = on // BLUE
-const int RIGHT_MOTOR = IS_ESP32 ? 19 : 13;           //  Low = off    High = on // WHITE
-const int GATE_DIRECTION = IS_ESP32 ? 17 : 14;       //  Low = close    High = open // BROWN
-const int TRIGGER_PIN = IS_ESP32 ? 25 : 5;           //  Low = off    High = on
+//  Low = off    High = on
+const int LEFT_MOTOR = IS_ESP32 ? 18 : 2;            //  BLUE
+const int RIGHT_MOTOR = IS_ESP32 ? 19 : 13;          //  WHITE
+const int GATE_DIRECTION = IS_ESP32 ? 17 : 14;       //  BROWN
+const int TRIGGER_PIN = IS_ESP32 ? 25 : 5;
+const int LIGHT_PIN = 22;
 
 int openTrigger = LOW;
 bool hasGateOpened = false, gateOpening = false, gateClosing = false;
@@ -27,6 +30,10 @@ void openGate() {
     Serial.println("OPEN");
   }
   
+  if (IS_LIGHT_ENABLE) {
+    digitalWrite(LIGHT_PIN, HIGH); // Turn on the lights now that the gates are opening
+  }
+
   currentTime = millis() - gateOpeningTime;
 
   if (currentTime < 100) {
@@ -64,12 +71,15 @@ void closeGate () {
     digitalWrite(LEFT_MOTOR , HIGH); 
   }
 
-  // 
   if (currentTime > MOVING_DURATION) {
     digitalWrite(RIGHT_MOTOR , LOW);
     digitalWrite(LEFT_MOTOR , LOW);
     hasGateOpened = false;
     gateClosing = false;
+    
+    if (IS_LIGHT_ENABLE) {
+      digitalWrite(LIGHT_PIN, HIGH); // Turn off the lights now that the gates are closed
+    }
   }
 }
 
@@ -96,6 +106,11 @@ void setup(){
   digitalWrite(GATE_DIRECTION, LOW);
   digitalWrite(LEFT_MOTOR, LOW);
   digitalWrite(RIGHT_MOTOR, LOW);
+
+  if (IS_LIGHT_ENABLE) {
+    pinMode(LIGHT_PIN, OUTPUT);
+    digitalWrite(LIGHT_PIN, LOW);
+  }
 }
   
 void loop(){
