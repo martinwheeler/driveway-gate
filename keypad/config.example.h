@@ -1,0 +1,1 @@
+#define PASSWORD "1234"
