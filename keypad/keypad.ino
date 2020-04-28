@@ -102,7 +102,7 @@ void loop(){
       Serial.println(key);
     }
 
-    if (key == '#') {
+    if (key == SUBMIT_KEY) {
       if (currentEntry() == PASSWORD) {
         triggerGate();
       } else {
