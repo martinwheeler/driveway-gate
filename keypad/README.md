@@ -11,3 +11,5 @@ Open up the newly created file and edit the constant variable `PASSWORD`. This i
 For a user to submit the pass phrase they have entered they must type a specific key. The default key that is defined in `config.example.h` is `#` but it can be any key you wish.
 
 You can configure the key the same way you would for the password mentioned above.
+
+NOTE: The `SUBMIT_KEY` value must be defined as a `char` that's why it has single quotes around it.
