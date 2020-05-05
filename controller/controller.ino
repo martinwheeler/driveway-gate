@@ -77,7 +77,7 @@ void closeGate () {
     gateClosing = false;
     
     if (IS_LIGHT_ENABLE) {
-      digitalWrite(LIGHT_PIN, HIGH); // Turn off the lights now that the gates are closed
+      digitalWrite(LIGHT_PIN, LOW); // Turn off the lights now that the gates are closed
     }
   }
 }
@@ -100,16 +100,13 @@ void setup(){
   pinMode(RIGHT_MOTOR, OUTPUT);
   pinMode(LEFT_MOTOR, OUTPUT);
   pinMode(GATE_DIRECTION, OUTPUT);
+  pinMode(LIGHT_PIN, OUTPUT);
   pinMode(TRIGGER_PIN, INPUT_PULLUP);
 
   digitalWrite(GATE_DIRECTION, LOW);
   digitalWrite(LEFT_MOTOR, LOW);
   digitalWrite(RIGHT_MOTOR, LOW);
-
-  if (IS_LIGHT_ENABLE) {
-    pinMode(LIGHT_PIN, OUTPUT);
-    digitalWrite(LIGHT_PIN, LOW);
-  }
+  digitalWrite(LIGHT_PIN, LOW);
 }
   
 void loop(){
