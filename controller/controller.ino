@@ -4,16 +4,15 @@
  
 #include "Utils.h"
 
-const int IS_ESP32 = 0;
 const int IS_DEBUG = 0;
-const int IS_LIGHT_ENABLE = 0;
+const int IS_LIGHT_ENABLE = 1;
 
-//  Low = off    High = on
-const int LEFT_MOTOR = IS_ESP32 ? 18 : 2;            //  BLUE
-const int RIGHT_MOTOR = IS_ESP32 ? 19 : 13;          //  WHITE
-const int GATE_DIRECTION = IS_ESP32 ? 17 : 14;       //  BROWN
-const int TRIGGER_PIN = IS_ESP32 ? 25 : 5;
-const int LIGHT_PIN = 22;
+// The pins below are the GPIO numbers found on the back of the Wemos D1 R2 board. Which is why the digital pin number is also mentioned in comments.
+const int LEFT_MOTOR = 2;           // Cable colour: BLUE, Digital Pin: D9
+const int RIGHT_MOTOR = 13;         // Cable colour: WHITE, Digital Pin: D7
+const int GATE_DIRECTION = 14;      // Cable colour: BROWN, Digital Pin: D5
+const int TRIGGER_PIN = 5;          // Cable colour: BLACK, Digital Pin: D3
+const int LIGHT_PIN = 4;            // Cable colour: ORANGE, Digital Pin: D4
 
 int openTrigger = LOW;
 bool hasGateOpened = false, gateOpening = false, gateClosing = false;
