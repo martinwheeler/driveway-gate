@@ -12,7 +12,7 @@ using namespace std;
 #include "config.h"
 #include "Utils.h"
 
-const int IS_DEBUG = 1;
+const int IS_DEBUG = 0;
 const int IS_LIGHT_ENABLED = 1;
 const int IS_APP_ENABLED = 1;
 const String VERSION = "1.0.0";
@@ -76,6 +76,8 @@ void printInformation() {
   informationPayload += "\r\nVersion: " + VERSION;
   informationPayload += "\r\nLights: ";
   informationPayload += (IS_LIGHT_ENABLED) ? "Yes" : "No";
+  informationPayload += "\r\nApp: ";
+  informationPayload += (IS_APP_ENABLED) ? "Yes" : "No";
   informationPayload += "\r\nClose Delay: " + String(OPEN_DURATION / 1000) + " seconds";
   informationPayload += "\r\nLight Off Delay: " + String(LIGHT_OFF_TIMEOUT / 1000) + " seconds";
   informationPayload += "\r\n*=======================================================================*";
@@ -270,6 +272,27 @@ void handleGateTrigger () {
   }
 }
 
+String getGateStatus () {
+
+  if (hasGateOpened && gateClosing) {
+    return "closing";
+  }
+
+  if (hasGateOpened && !gateClosing && !gateOpening) {
+    return "open";
+  }
+
+  if (!hasGateOpened && gateOpening) {
+    return "opening";
+  }
+
+  if (!hasGateOpened && !gateClosing && !gateOpening) {
+    return "closed";
+  }
+  
+  return "unsure";
+}
+
 void handleAppRequests () {
   wifiClient = server.available();
 
@@ -299,24 +322,39 @@ void handleAppRequests () {
   }
 
   if (clientRequest.indexOf("OPTIONS") != -1) {
-    wifiClient.print("HTTP/1.1 200 OK\r\n\r\n");
+    wifiClient.print("HTTP/2 200 OK\r\n\r\n");
     return;
   }
 
   if (
     clientRequest.indexOf("POST") != -1 &&
-    clientRequest.indexOf("Bearer 5641cb6b-73ae-4b7a-9d86-d0492b443e92") != -1
+    clientRequest.indexOf(AUTHORIZATION_VALUE) != -1
   ) {
     if (clientRequest.indexOf("/status") != -1) {
       jsonPayload = "{";
       jsonPayload += "  \"success\": true";
-      jsonPayload += ",  \"signalStrength\": \"" + String(WiFi.RSSI()) + "\"";
-      jsonPayload += ",  \"gate\": \"opened\"";
+      jsonPayload += ",  \"wifiSignal\": \"" + String(WiFi.RSSI()) + "\"";
+      jsonPayload += ",  \"gate\": \"" + getGateStatus() + "\"";
+      jsonPayload += ",  \"light\": \"" + String(lightsOn ? "on" : "off") + "\"";
       jsonPayload += "}";
 
-      wifiClient.print("HTTP/1.1 200 OK\r\nContent-type: application/json\r\n\r\n");
+      wifiClient.print("HTTP/2 200 OK\r\nContent-type: application/json\r\n\r\n");
       wifiClient.print(jsonPayload);
+    } else if (clientRequest.indexOf("/trigger") != -1) {
+      openTrigger = LOW;
+      handleGateTrigger();
+      
+      jsonPayload = "{";
+      jsonPayload += "  \"success\": true";
+      jsonPayload += "}";
+
+      wifiClient.print("HTTP/2 200 OK\r\nContent-type: application/json\r\n\r\n");
+      wifiClient.print(jsonPayload);
+    } else {
+      wifiClient.print("HTTP/2 404 OK\r\n\r\n");
     }
+  } else {
+    wifiClient.print("HTTP/2 401 OK\r\n\r\n");
   }
 }
 
