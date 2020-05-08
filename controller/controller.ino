@@ -14,9 +14,15 @@ using namespace std;
 
 const int IS_DEBUG = 1;
 const int IS_LIGHT_ENABLED = 1;
+const int IS_APP_ENABLED = 1;
 const String VERSION = "1.0.0";
 
 HTTPClient http;
+WiFiClient wifiClient;
+WiFiServer server(80);
+String clientRequest, jsonPayload;
+bool hasSeenNewline;
+char characterRead;
 std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
 
 // The pins below are the GPIO numbers found on the back of the Wemos D1 R2 board. Which is why the digital pin number is also mentioned in comments.
@@ -44,11 +50,6 @@ void connectWifi() {
   if (WiFi.status() == WL_CONNECTED) {
     return;
   }
-
-//  if (IS_DEBUG) {
-//    Serial.print("Attempting to connect to SSID: ");
-//    Serial.println(SSID);
-//  }
 
   connectionStartTime = millis();
   WiFi.begin(SSID, SECRET);  
@@ -221,6 +222,7 @@ void setup(){
   }
 
   connectWifi();
+  server.begin();
   
   pinMode(RIGHT_MOTOR, OUTPUT);
   pinMode(LEFT_MOTOR, OUTPUT);
@@ -268,6 +270,56 @@ void handleGateTrigger () {
   }
 }
 
+void handleAppRequests () {
+  wifiClient = server.available();
+
+  if (!wifiClient) {
+    return;
+  }
+
+  clientRequest = "";
+  hasSeenNewline = false;
+  while (wifiClient.connected()) {
+    if (wifiClient.available()) {
+      characterRead = wifiClient.read();
+      if (hasSeenNewline && characterRead != '\r') {
+        hasSeenNewline = false;
+      }
+
+      if (hasSeenNewline) {
+        break;
+      }
+
+      clientRequest += characterRead;
+
+      if (characterRead == '\n') {
+        hasSeenNewline = true;
+      }
+    }
+  }
+
+  if (clientRequest.indexOf("OPTIONS") != -1) {
+    wifiClient.print("HTTP/1.1 200 OK\r\n\r\n");
+    return;
+  }
+
+  if (
+    clientRequest.indexOf("POST") != -1 &&
+    clientRequest.indexOf("Bearer 5641cb6b-73ae-4b7a-9d86-d0492b443e92") != -1
+  ) {
+    if (clientRequest.indexOf("/status") != -1) {
+      jsonPayload = "{";
+      jsonPayload += "  \"success\": true";
+      jsonPayload += ",  \"signalStrength\": \"" + String(WiFi.RSSI()) + "\"";
+      jsonPayload += ",  \"gate\": \"opened\"";
+      jsonPayload += "}";
+
+      wifiClient.print("HTTP/1.1 200 OK\r\nContent-type: application/json\r\n\r\n");
+      wifiClient.print(jsonPayload);
+    }
+  }
+}
+
 void loop(){
   openTrigger = digitalRead(TRIGGER_PIN);
 
@@ -301,4 +353,7 @@ void loop(){
   }
 
   handleUnsentMessages();
+  if (IS_APP_ENABLED) {
+    handleAppRequests(); 
+  }
 }
