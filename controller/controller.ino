@@ -7,17 +7,12 @@ using namespace std;
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include <ArduinoJson.h>
-#include <WiFiClientSecureBearSSL.h>
 #include "config.h"
 #include "Utils.h"
 
-const int IS_DEBUG = 1;
+const int IS_DEBUG = 0;
 const int IS_LIGHT_ENABLE = 1;
 const String VERSION = "1.0.0";
-
-HTTPClient http;
-std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
 
 // The pins below are the GPIO numbers found on the back of the Wemos D1 R2 board. Which is why the digital pin number is also mentioned in comments.
 const int LEFT_MOTOR = 2;           // Cable colour: BLUE, Digital Pin: D9
@@ -38,14 +33,16 @@ unsigned long currentTime = 0, gateOpeningTime = 0, gateClosingTime = 0;
 
 vector<String> unsentMessages;
 
-void connectWifi(int retries = 200) {
+HTTPClient http;
+
+void connectWifi(int retries = 5) {
   int tries = 0;
   attemptingWifiConnection = true;
 
   WiFi.begin(SSID, SECRET);
 
   if (IS_DEBUG) {
-    Serial.print("Attempting to connect to SSID: ");
+    Serial.println("Attempting to connect to SSID: ");
     Serial.print(SSID);
     Serial.println();
     Serial.print("Connecting");
@@ -55,7 +52,6 @@ void connectWifi(int retries = 200) {
     if (IS_DEBUG) {
       Serial.print(".");
     }
-    
     delay(500);
  
     tries++;
@@ -71,9 +67,8 @@ void connectWifi(int retries = 200) {
   }
 
   if (IS_DEBUG) {
-    Serial.println("\r\n");
+    Serial.println();
   }
-  
   printWifiData();
 }
 
@@ -81,15 +76,15 @@ void printWifiData() {
   IPAddress ip = WiFi.localIP();
   String ipStr = String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]);
 
-  String wifiPayload = "Network Connection :computer::signal_strength:\r\n";
+  String wifiPayload = "Connectivity :computer:\r\n";
   wifiPayload += "*--------------------------------------------*\r\n";
-  wifiPayload += "SSID: ";
+  wifiPayload += "Connected to SSID: ";
   wifiPayload += SSID;
   wifiPayload += "\r\n";
-  wifiPayload += "IP: ";
+  wifiPayload += "IP Address: ";
   wifiPayload += ipStr;
   wifiPayload += "\r\n";
-  wifiPayload += "Signal: " + String(WiFi.RSSI()) + " dBm";
+  wifiPayload += "Signal Strength: " + String(WiFi.RSSI()) + " dBm";
   wifiPayload += "\r\n*--------------------------------------------*";
 
   logMessage(wifiPayload);
@@ -106,41 +101,10 @@ void logMessage(String message) {
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    int responseCode = 0;
-    client->setFingerprint(SLACK_HTTPS_FINGERPRINT);
-    
-    StaticJsonDocument<512> jsonDoc;
- 
-    jsonDoc["text"] = message;
-    jsonDoc["channel"] = "#66-broadoak-gate";
-    jsonDoc["username"] = "GateBot";
-    jsonDoc["icon_emoji"] = ":car:";
-
-    if (IS_DEBUG) {
-      int messageLength = measureJson(jsonDoc);
-  
-      Serial.print("Size: ");
-      Serial.println(messageLength);  
-    }
-    
-    char slackPayload[512];
-    serializeJson(jsonDoc, slackPayload);
-    
-    if (IS_DEBUG) {
-      Serial.println(slackPayload); 
-    }
-    
-    http.begin(*client, SLACK_WEBHOOK);
-    http.addHeader("Content-Type", "application/json");
-    responseCode = http.POST(slackPayload);
-
-    if (responseCode < 0 && IS_DEBUG) {
-      Serial.printf("[HTTPS] POST... failed, error: %s\n", http.errorToString(responseCode).c_str());
-    }
-    
+    http.begin(SLACK_WEBHOOK, SLACK_HTTPS_FINGERPRINT);
+    http.POST("{ \"text\": \"" + message + "\", \"channel\": \"#66-broadoak-gate\", \"username\": \"GateBot\", \"icon_emoji\": \":car:\" }");
     http.end();
   } else {
-    Serial.println("\r\n Saving unsent message \r\n");
     unsentMessages.push_back(message);
   }
 }
@@ -158,17 +122,19 @@ void printInformation() {
 }
 
 void openGate() {
+  if (IS_DEBUG) {
+    Serial.println("OPEN");
+  }
+  
+  if (IS_LIGHT_ENABLE) {
+    digitalWrite(LIGHT_PIN, HIGH); // Turn on the lights now that the gates are opening
+  }
+
   currentTime = millis() - gateOpeningTime;
 
   if (currentTime < 100) {
     digitalWrite(GATE_DIRECTION , HIGH);
     digitalWrite(LEFT_MOTOR , HIGH);
-
-    if (IS_LIGHT_ENABLE) {
-      digitalWrite(LIGHT_PIN, HIGH); // Turn on the lights now that the gates are opening
-    }
-
-    logMessage("The front gate is beginning to open.");
   }
 
   if (currentTime > RIGHT_OPEN_DELAY && currentTime < (RIGHT_OPEN_DELAY + 100)) {
@@ -184,15 +150,17 @@ void openGate() {
   }
 }
 
-void closeGate () {  
+void closeGate () {
+  if (IS_DEBUG) {
+    Serial.println("CLOSE");
+  }
+  
   currentTime = millis() - gateClosingTime;
 
   // Begin closing the gate
   if (currentTime < 100) {
     digitalWrite(GATE_DIRECTION , LOW);
-    digitalWrite(RIGHT_MOTOR , HIGH);
-
-    logMessage("The front gate is beginning to close.");
+    digitalWrite(RIGHT_MOTOR , HIGH);  
   }
 
   if (currentTime > LEFT_CLOSE_DELAY && currentTime < (LEFT_CLOSE_DELAY + 100)) {
@@ -204,13 +172,11 @@ void closeGate () {
     digitalWrite(LEFT_MOTOR , LOW);
     hasGateOpened = false;
     gateClosing = false;
+    
+    if (IS_LIGHT_ENABLE) {
+      digitalWrite(LIGHT_PIN, LOW); // Turn off the lights now that the gates are closed
+    }
   }
-}
-
-void handleLights () {
-
-  // TODO: Toggle lights off or on with a time delay
-  
 }
 
 void setup(){
@@ -220,6 +186,9 @@ void setup(){
       return; // wait for serial port to connect. Required for debugging.
     }
   }
+
+  Utils::init(IS_DEBUG);
+  Utils::test();
   
   if (IS_DEBUG) {
     Serial.println();
@@ -246,13 +215,16 @@ void setup(){
 void loop(){
   openTrigger = digitalRead(TRIGGER_PIN);
 
+  if (IS_DEBUG) {
+    Serial.print("TRIGGERING: ");
+    Serial.println(openTrigger == LOW ? "Yes" : "No");
+  }
+
   if (!attemptingWifiConnection && (WiFi.status() != WL_CONNECTED)) {
     connectWifi();
   }
 
   if (unsentMessages.size() > 0 && WiFi.status() == WL_CONNECTED) {
-    Serial.println("Sending unsent messages");
-    
     for (const String &message : unsentMessages) {
       logMessage(message);
     }
@@ -273,8 +245,6 @@ void loop(){
     gateClosing = false;
     gateOpeningTime = millis();
   }
-
-  handleLights();
 
   if (gateOpening) {
     openGate();
