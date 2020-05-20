@@ -4,7 +4,7 @@
  
 #include "Utils.h"
 
-const int VERSION = "1.0.0"
+const String VERSION = "1.0.0"
 const int IS_DEBUG = 0;
 const int IS_LIGHT_ENABLE = 1;
 
