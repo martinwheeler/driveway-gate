@@ -1,13 +1,29 @@
+#include <WiFiServerSecure.h>
+#include <WiFiClientSecure.h>
+#include <WiFiClientSecureBearSSL.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WiFiMulti.h>
+#include <WiFiUdp.h>
+#include <ESP8266WiFiType.h>
+#include <CertStoreBearSSL.h>
+#include <ESP8266WiFiAP.h>
+#include <WiFiClient.h>
+#include <BearSSLHelpers.h>
+#include <WiFiServer.h>
+#include <ESP8266WiFiScan.h>
+#include <WiFiServerSecureBearSSL.h>
+#include <ESP8266WiFiGeneric.h>
+#include <ESP8266WiFiSTA.h>
+#include <WiFiClientSecureAxTLS.h>
+#include <WiFiServerSecureAxTLS.h>
+
+#include <ESP8266HTTPClient.h>
+
 
 /**
  * This project controls two DC motors to open and close a driveway gate. It also controls some lights which will be turned on during operation of the gate.
- */ 
-
-using namespace std; 
-
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-#include "config.h"
+ */
+ 
 #include "Utils.h"
 
 const int IS_DEBUG = 0;
@@ -22,7 +38,7 @@ const int TRIGGER_PIN = 5;          // Cable colour: BLACK, Digital Pin: D3
 const int LIGHT_PIN = 4;            // Cable colour: ORANGE, Digital Pin: D4
 
 int openTrigger = LOW;
-bool hasGateOpened = false, gateOpening = false, gateClosing = false, attemptingWifiConnection = false;
+bool hasGateOpened = false, gateOpening = false, gateClosing = false;
 
 const int OPEN_DURATION = 70000; // 70 seconds
 const int LEFT_CLOSE_DELAY = 4750; // 4.75 seconds
@@ -31,13 +47,15 @@ const int MOVING_DURATION = 12000; // 12 seconds
 
 unsigned long currentTime = 0, gateOpeningTime = 0, gateClosingTime = 0;
 
-vector<String> unsentMessages;
-
+// Wifi communication
+const char* SSID = "G-Spot";
+const char* SECRET = "evenstar078";
+const String SLACK_WEBHOOK = "https://hooks.slack.com/services/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"; // MARTIN WHEELER SLACK SPACE
+const String HTTPS_FINGERPRINT = "C1:0D:53:49:D2:3E:E5:2B:A2:61:D5:9E:6F:99:0D:3D:FD:8B:B2:B3"; // HTTPS Fingerprint SHA1 that matches with the HTTPS certificate from the slack hook address
 HTTPClient http;
 
 void connectWifi(int retries = 5) {
   int tries = 0;
-  attemptingWifiConnection = true;
 
   WiFi.begin(SSID, SECRET);
 
@@ -56,13 +74,11 @@ void connectWifi(int retries = 5) {
  
     tries++;
     if (tries >= retries) {
-      attemptingWifiConnection = false;
       break;
     }
   }
 
   if (tries >= retries) {
-    attemptingWifiConnection = false;
     return;
   }
 
@@ -98,14 +114,10 @@ void printWifiData() {
 void logMessage(String message) {
   if (IS_DEBUG) {
     Serial.println(message);
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    http.begin(SLACK_WEBHOOK, SLACK_HTTPS_FINGERPRINT);
+  } else {
+    http.begin(SLACK_WEBHOOK, HTTPS_FINGERPRINT);
     http.POST("{ \"text\": \"" + message + "\", \"channel\": \"#66-broadoak-gate\", \"username\": \"GateBot\", \"icon_emoji\": \":car:\" }");
     http.end();
-  } else {
-    unsentMessages.push_back(message);
   }
 }
 
@@ -115,7 +127,7 @@ void printInformation() {
   informationPayload += "\r\nVersion: " + VERSION;
   informationPayload += "\r\nLights: ";
   informationPayload += (IS_LIGHT_ENABLE) ? "Yes" : "No";
-  informationPayload += "\r\nClose Delay: " + String(OPEN_DURATION / 1000) + "seconds";
+  informationPayload += "\r\nClose Delay: " + String(OPEN_DURATION / 1000);
   informationPayload += "\r\n*--------------------------------------------*";
 
   logMessage(informationPayload);
@@ -197,7 +209,7 @@ void setup(){
   }
 
   while (WiFi.status() != WL_CONNECTED) {
-    connectWifi();
+    connectWifi(200);
   }
   
   pinMode(RIGHT_MOTOR, OUTPUT);
@@ -215,19 +227,11 @@ void setup(){
 void loop(){
   openTrigger = digitalRead(TRIGGER_PIN);
 
+  Serial.read();
+
   if (IS_DEBUG) {
     Serial.print("TRIGGERING: ");
     Serial.println(openTrigger == LOW ? "Yes" : "No");
-  }
-
-  if (!attemptingWifiConnection && (WiFi.status() != WL_CONNECTED)) {
-    connectWifi();
-  }
-
-  if (unsentMessages.size() > 0 && WiFi.status() == WL_CONNECTED) {
-    for (const String &message : unsentMessages) {
-      logMessage(message);
-    }
   }
 
   if (openTrigger == LOW && !hasGateOpened && !gateOpening) {
