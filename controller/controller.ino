@@ -1,25 +1,3 @@
-#include <WiFiServerSecure.h>
-#include <WiFiClientSecure.h>
-#include <WiFiClientSecureBearSSL.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266WiFiMulti.h>
-#include <WiFiUdp.h>
-#include <ESP8266WiFiType.h>
-#include <CertStoreBearSSL.h>
-#include <ESP8266WiFiAP.h>
-#include <WiFiClient.h>
-#include <BearSSLHelpers.h>
-#include <WiFiServer.h>
-#include <ESP8266WiFiScan.h>
-#include <WiFiServerSecureBearSSL.h>
-#include <ESP8266WiFiGeneric.h>
-#include <ESP8266WiFiSTA.h>
-#include <WiFiClientSecureAxTLS.h>
-#include <WiFiServerSecureAxTLS.h>
-
-#include <ESP8266HTTPClient.h>
-
-
 /**
  * This project controls two DC motors to open and close a driveway gate. It also controls some lights which will be turned on during operation of the gate.
  */
@@ -28,7 +6,6 @@
 
 const int IS_DEBUG = 0;
 const int IS_LIGHT_ENABLE = 1;
-const String VERSION = "1.0.0";
 
 // The pins below are the GPIO numbers found on the back of the Wemos D1 R2 board. Which is why the digital pin number is also mentioned in comments.
 const int LEFT_MOTOR = 2;           // Cable colour: BLUE, Digital Pin: D9
@@ -46,92 +23,6 @@ const int RIGHT_OPEN_DELAY = 350; // 0.35 seconds
 const int MOVING_DURATION = 12000; // 12 seconds
 
 unsigned long currentTime = 0, gateOpeningTime = 0, gateClosingTime = 0;
-
-// Wifi communication
-const char* SSID = "G-Spot";
-const char* SECRET = "evenstar078";
-const String SLACK_WEBHOOK = "https://hooks.slack.com/services/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"; // MARTIN WHEELER SLACK SPACE
-const String HTTPS_FINGERPRINT = "C1:0D:53:49:D2:3E:E5:2B:A2:61:D5:9E:6F:99:0D:3D:FD:8B:B2:B3"; // HTTPS Fingerprint SHA1 that matches with the HTTPS certificate from the slack hook address
-HTTPClient http;
-
-void connectWifi(int retries = 5) {
-  int tries = 0;
-
-  WiFi.begin(SSID, SECRET);
-
-  if (IS_DEBUG) {
-    Serial.println("Attempting to connect to SSID: ");
-    Serial.print(SSID);
-    Serial.println();
-    Serial.print("Connecting");
-  }
-
-  while (WiFi.status() != WL_CONNECTED) {
-    if (IS_DEBUG) {
-      Serial.print(".");
-    }
-    delay(500);
- 
-    tries++;
-    if (tries >= retries) {
-      break;
-    }
-  }
-
-  if (tries >= retries) {
-    return;
-  }
-
-  if (IS_DEBUG) {
-    Serial.println();
-  }
-  printWifiData();
-}
-
-void printWifiData() {
-  IPAddress ip = WiFi.localIP();
-  String ipStr = String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]);
-
-  String wifiPayload = "Connectivity :computer:\r\n";
-  wifiPayload += "*--------------------------------------------*\r\n";
-  wifiPayload += "Connected to SSID: ";
-  wifiPayload += SSID;
-  wifiPayload += "\r\n";
-  wifiPayload += "IP Address: ";
-  wifiPayload += ipStr;
-  wifiPayload += "\r\n";
-  wifiPayload += "Signal Strength: " + String(WiFi.RSSI()) + " dBm";
-  wifiPayload += "\r\n*--------------------------------------------*";
-
-  logMessage(wifiPayload);
-}
-
-/**
- * Logs out a message to the serial monitor or sends it to a Slack channel.
- * 
- * @param String message - The message that will be sent.
- */
-void logMessage(String message) {
-  if (IS_DEBUG) {
-    Serial.println(message);
-  } else {
-    http.begin(SLACK_WEBHOOK, HTTPS_FINGERPRINT);
-    http.POST("{ \"text\": \"" + message + "\", \"channel\": \"#66-broadoak-gate\", \"username\": \"GateBot\", \"icon_emoji\": \":car:\" }");
-    http.end();
-  }
-}
-
-void printInformation() {
-  String informationPayload = "Config :bulb:\r\n";
-  informationPayload += "*--------------------------------------------*\r\n";
-  informationPayload += "\r\nVersion: " + VERSION;
-  informationPayload += "\r\nLights: ";
-  informationPayload += (IS_LIGHT_ENABLE) ? "Yes" : "No";
-  informationPayload += "\r\nClose Delay: " + String(OPEN_DURATION / 1000);
-  informationPayload += "\r\n*--------------------------------------------*";
-
-  logMessage(informationPayload);
-}
 
 void openGate() {
   if (IS_DEBUG) {
@@ -203,13 +94,7 @@ void setup(){
   Utils::test();
   
   if (IS_DEBUG) {
-    Serial.println();
     Serial.println("DEBUG MODE");
-    Serial.println();
-  }
-
-  while (WiFi.status() != WL_CONNECTED) {
-    connectWifi(200);
   }
   
   pinMode(RIGHT_MOTOR, OUTPUT);
