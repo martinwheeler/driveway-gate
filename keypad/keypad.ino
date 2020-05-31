@@ -37,6 +37,9 @@ String currentEntry () {
 
 void flashRedLED () {
   digitalWrite(RED_LED_PIN, HIGH);
+  playTone();
+  playTone();
+  playTone();
   delay(2500);
   digitalWrite(RED_LED_PIN, LOW);
 }
