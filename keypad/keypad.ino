@@ -7,7 +7,7 @@ const int DOOR_PIN = 13;
 const int GREEN_LED_PIN = 9;
 const int RED_LED_PIN = 10;
 const int BEEP_LED_PIN = 12;
-const int IS_DEBUG = 1; // Enable/disable the serial print statements
+const int IS_DEBUG = 0; // Enable/disable the serial print statements
 
 const byte ROWS = 4;
 const byte COLS = 3;
