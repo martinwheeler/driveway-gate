@@ -1,8 +1,8 @@
 #include <Keypad.h>
 #include "config.h"
 
-const int TRIGGER_COUNT = 5;
-const int TRIGGER_DELAY = 1000;
+const int TRIGGER_COUNT = 1;
+const int TRIGGER_DELAY = 500;
 const int DOOR_PIN = 13;
 const int GREEN_LED_PIN = 9;
 const int RED_LED_PIN = 10;
@@ -49,9 +49,9 @@ void triggerGate () {
   digitalWrite(GREEN_LED_PIN, HIGH);
 
   for (int i = 0; i < TRIGGER_COUNT; i++) {
-    digitalWrite(DOOR_PIN, LOW);
-    delay(TRIGGER_DELAY);
     digitalWrite(DOOR_PIN, HIGH);
+    delay(TRIGGER_DELAY);
+    digitalWrite(DOOR_PIN, LOW);
     delay(TRIGGER_DELAY);
   }
   
@@ -64,7 +64,7 @@ void addPressed (char keyPressed) {
 }
 
 void reset () {
-  digitalWrite(DOOR_PIN, HIGH);
+  digitalWrite(DOOR_PIN, LOW);
   pressedIndex = 0;
 
   for(int i = 0; i < sizeof(pressed); i++) {
@@ -86,7 +86,7 @@ void setup(){
   }
   
   pinMode(DOOR_PIN, OUTPUT);
-  digitalWrite(DOOR_PIN, HIGH); // Starts high then goes low
+  digitalWrite(DOOR_PIN, LOW); // Starts low then goes high to toggle the relay
   
   pinMode(GREEN_LED_PIN, OUTPUT);
   pinMode(RED_LED_PIN, OUTPUT);
@@ -97,6 +97,7 @@ void loop(){
   
   if (key){
     playTone();
+
     if (IS_DEBUG) {
       Serial.print("Key Pressed : ");
       Serial.println(key);
