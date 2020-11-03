@@ -91,8 +91,9 @@ void handleLights () {
     if (lightsOn) {
       currentLightTime = millis() - lightOnTime;
 
-      if (!hasGateOpened && !gateClosing && currentLightTime > LIGHT_ON_DURATION) {
-        digitalWrite(LIGHT_PIN, LOW); // Turn on the lights now that the gates are opening
+      // NOTE: We don't worry about the gate closing as a trigger because we occasionally leave the gates open
+      if (currentLightTime > LIGHT_ON_DURATION) {
+        digitalWrite(LIGHT_PIN, LOW); // Turn off the lights now that the time has passed
         lightsOn = false;
       }
     }
