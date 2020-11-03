@@ -21,7 +21,7 @@ const int OPEN_DURATION = 72000; // 72 seconds ~ 72 - 12 ~ 60 seconds total
 const int LEFT_CLOSE_DELAY = 5500; // 5.5 seconds
 const int RIGHT_OPEN_DELAY = 350; // 0.35 seconds
 const int MOVING_DURATION = 15000; // 15 seconds
-const int LIGHT_ON_DURATION = 102000; // 102 seconds ~ 102 - 72 ~ 30 seconds total
+const int LIGHT_ON_DURATION = 132000; // 102 seconds ~ 132 - 72 ~ 60 seconds total
 
 unsigned long currentTime = 0, gateOpeningTime = 0, gateClosingTime = 0, currentLightTime = 0, lightOnTime = 0;
 
